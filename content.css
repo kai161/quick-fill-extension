@@ -1,0 +1,153 @@
+/* content.css - 历史记录浮动面板样式 */
+
+.qf-dropdown {
+  position: fixed;
+  z-index: 2147483647;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  box-sizing: border-box;
+  overflow: hidden;
+  min-width: 200px;
+}
+
+.qf-dropdown.qf-dragging {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  opacity: 0.95;
+}
+
+/* ── 拖拽手柄 ── */
+.qf-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #3b5bdb;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: move;
+  user-select: none;
+  border-radius: 7px 7px 0 0;
+}
+
+.qf-drag-icon {
+  font-size: 14px;
+  opacity: 0.8;
+  letter-spacing: 1px;
+}
+
+/* ── 列表容器 ── */
+.qf-list {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #d0d0d0 transparent;
+}
+
+.qf-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.qf-list::-webkit-scrollbar-thumb {
+  background: #d0d0d0;
+  border-radius: 2px;
+}
+
+/* ── 空状态 ── */
+.qf-empty {
+  padding: 14px 12px;
+  color: #bbb;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ── 列表项 ── */
+.qf-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  cursor: pointer;
+  color: #333;
+  gap: 8px;
+  transition: background 0.1s;
+}
+
+.qf-item:hover {
+  background: #f0f4ff;
+}
+
+.qf-item--active {
+  background: #e0ebff;
+}
+
+.qf-item-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #222;
+}
+
+.qf-item-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #999;
+  background: #f0f0f0;
+  border-radius: 10px;
+  padding: 1px 6px;
+}
+
+/* ── 手动保存按钮（手动模式下显示在标题栏） ── */
+.qf-save-btn {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid rgba(255,255,255,0.6);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.qf-save-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.3);
+}
+
+.qf-save-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ── 选中文字保存气泡 ── */
+.qf-bubble {
+  position: absolute;
+  z-index: 2147483647;
+  background: #3b5bdb;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  user-select: none;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.qf-bubble:hover {
+  background: #2f4ac0;
+}
+
+.qf-bubble--saved {
+  background: #2f9e44;
+}

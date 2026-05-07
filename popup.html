@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quick Fill</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+
+  <!-- ── 主面板 ── -->
+  <div id="panelMain">
+    <div class="header">
+      <div class="logo">
+        <img src="icons/icon16.png" alt="" />
+        <span>Quick Fill</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn-clear" id="btnClear" title="清空全部">清空</button>
+        <button class="btn-icon" id="btnSettings" title="设置">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 免费限额提示条 -->
+    <div class="limit-banner" id="limitBanner" style="display:none">
+      <span id="limitBannerText"></span>
+      <button class="btn-upgrade" id="btnUpgradeMain">升级会员</button>
+    </div>
+
+    <div class="search-wrap">
+      <input type="text" id="searchInput" class="search-input" placeholder="搜索或输入新内容..." autocomplete="off" />
+      <button class="btn-save-input" id="btnSaveInput" title="保存输入的内容">保存</button>
+    </div>
+
+    <div class="list-wrap" id="listWrap">
+      <div class="empty" id="emptyTip">暂无记录，选中任意文字即可保存</div>
+    </div>
+
+    <div class="footer">
+      <span id="countTip" class="count-tip"></span>
+      <span class="shortcut-tip">在输入框内按 <kbd>Ctrl</kbd>+<kbd>M</kbd> 快速调出</span>
+    </div>
+  </div>
+
+  <!-- ── 设置面板 ── -->
+  <div id="panelSettings" style="display:none">
+    <div class="header">
+      <button class="btn-back" id="btnBack" title="返回">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
+      <span class="settings-title">设置</span>
+      <div style="width:28px"></div>
+    </div>
+
+    <div class="settings-body">
+
+      <!-- 账号区块 -->
+      <div class="settings-section-label">账号</div>
+
+      <!-- 未登录 -->
+      <div id="authForm">
+        <div class="auth-tabs">
+          <button class="auth-tab auth-tab--active" id="tabLogin">登录</button>
+          <button class="auth-tab" id="tabRegister">注册</button>
+        </div>
+        <div class="auth-fields">
+          <input type="email" id="authEmail" class="search-input" placeholder="邮箱" autocomplete="off" />
+          <input type="password" id="authPassword" class="search-input" placeholder="密码（至少 6 位）" />
+          <div id="authError" class="auth-error"></div>
+          <button class="btn-auth" id="btnAuth">登录</button>
+        </div>
+      </div>
+
+      <!-- 已登录 -->
+      <div id="userInfo" style="display:none">
+        <div class="user-card">
+          <div class="user-card-left">
+            <div class="user-email" id="userEmail"></div>
+            <div id="userBadge" class="user-badge"></div>
+          </div>
+          <button class="btn-logout" id="btnLogout">退出</button>
+        </div>
+        <div id="upgradeSection" style="display:none">
+          <div class="upgrade-hint">免费版最多保存 <strong>10 条</strong>记录，升级会员后无限保存。</div>
+          <button class="btn-upgrade-full" id="btnUpgradeSettings">立即升级会员</button>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <!-- 生效网站 -->
+      <div class="settings-section-label">生效网站</div>
+
+      <div class="site-mode-bar">
+        <label class="radio-label">
+          <input type="radio" name="siteMode" value="all" id="modeAll" />
+          <span>全部网站</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="siteMode" value="allowlist" id="modeAllowlist" />
+          <span>仅限指定网站</span>
+        </label>
+      </div>
+
+      <div id="allowlistSection">
+        <div class="site-add-wrap">
+          <input type="text" id="siteInput" class="search-input" placeholder="输入域名，如 example.com" autocomplete="off" />
+          <button class="btn-save-input" id="btnAddSite">添加</button>
+        </div>
+        <button class="btn-add-current" id="btnAddCurrent">+ 添加当前网站</button>
+        <div class="list-wrap site-list-wrap" id="siteListWrap">
+          <div class="empty" id="siteEmptyTip">尚未添加任何网站</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
