@@ -6,6 +6,8 @@
   if (window.__qfInjected) return;
   window.__qfInjected = true;
 
+  const isCN = navigator.language.startsWith('zh');
+  const ct = (zh, en) => isCN ? zh : en;
   let bubble = null;       // 选中保存气泡
   let dropdown = null;     // 历史记录面板
   let activeInput = null;
@@ -30,7 +32,7 @@
     removeBubble();
     bubble = document.createElement('div');
     bubble.className = 'qf-bubble';
-    bubble.textContent = '保存到 Quick Fill';
+    bubble.textContent = ct('保存到 Quick Fill', 'Save to Quick Fill');
     bubble.style.left = `${x}px`;
     bubble.style.top = `${y - 36}px`;
 
@@ -40,7 +42,7 @@
       const val = text.trim();
       if (val.length >= 2) {
         await sendMsg('SAVE_HISTORY', { text: val });
-        bubble.textContent = '✓ 已存入';
+        bubble.textContent = ct('✓ 已存入', '✓ Saved');
         bubble.classList.add('qf-bubble--saved');
       }
       setTimeout(removeBubble, 800);
@@ -127,7 +129,7 @@
     // 标题栏（可拖拽）
     const handle = document.createElement('div');
     handle.className = 'qf-drag-handle';
-    handle.innerHTML = '<span>历史记录</span><span class="qf-drag-icon">⠿</span>';
+    handle.innerHTML = `<span>${ct('历史记录', 'History')}</span><span class="qf-drag-icon">⠿</span>`;
     dropdown.appendChild(handle);
 
     // 列表
@@ -137,7 +139,7 @@
     if (!items.length) {
       const empty = document.createElement('div');
       empty.className = 'qf-empty';
-      empty.textContent = '暂无记录，选中文字可保存';
+      empty.textContent = ct('暂无记录，选中文字可保存', 'No records yet. Select text to save.');
       list.appendChild(empty);
     } else {
       items.forEach((item, idx) => {

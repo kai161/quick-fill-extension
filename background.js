@@ -4,7 +4,7 @@ const STORAGE_KEY = 'qf_history';
 const MAX_RECORDS = 200;       // 存储硬上限（性能保护）
 const FREE_LIMIT = 10;         // 免费用户可保存条数
 const MIN_LENGTH = 3;
-const API_BASE = 'https://your-server.com'; // 部署后替换为实际地址
+const API_BASE = 'https://quickfill.freetools.best'; // 部署后替换为实际地址
 
 // 计算记录分数，用于排序（高频 + 近期使用优先）
 function calcScore(item) {

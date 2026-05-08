@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Quick Fill - 历史输入快速填充",
   "version": "1.0.0",
-  "description": "自动记录输入历史，支持快捷键内联下拉和 Popup 面板快速回填",
+  "description": "Record input history and quickly refill it with a hotkey or popup panel.",
   "permissions": ["storage", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],
   "action": {

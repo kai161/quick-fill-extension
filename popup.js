@@ -1,5 +1,73 @@
 // popup.js
 
+// ── i18n ──────────────────────────────────────────────────────
+
+const isCN = navigator.language.startsWith('zh');
+
+const i18n = {
+  // buttons & labels
+  clear:              isCN ? '清空'              : 'Clear',
+  save:               isCN ? '保存'              : 'Save',
+  settings:           isCN ? '设置'              : 'Settings',
+  back:               isCN ? '返回'              : 'Back',
+  login:              isCN ? '登录'              : 'Sign in',
+  register:           isCN ? '注册'              : 'Sign up',
+  logout:             isCN ? '退出'              : 'Sign out',
+  add:                isCN ? '添加'              : 'Add',
+  addCurrentSite:     isCN ? '+ 添加当前网站'    : '+ Add current site',
+  upgradeBanner:      isCN ? '升级会员'          : 'Upgrade',
+  upgradeBtn:         isCN ? '立即升级会员'       : 'Upgrade to Pro',
+  delete:             isCN ? '删除'              : 'Delete',
+  remove:             isCN ? '移除'              : 'Remove',
+
+  // placeholders
+  searchPlaceholder:  isCN ? '搜索或输入新内容…'  : 'Search or type new content…',
+  emailPlaceholder:   isCN ? '邮箱'              : 'Email',
+  passwordPlaceholder:isCN ? '密码（至少 6 位）'  : 'Password (min 6 chars)',
+  domainPlaceholder:  isCN ? '输入域名，如 example.com' : 'Domain, e.g. example.com',
+
+  // tips & messages
+  emptyTip:           isCN ? '暂无记录，选中任意文字即可保存' : 'No records yet. Select any text to save.',
+  shortcutTip:        isCN ? '在输入框内按 {key} 快速调出'   : 'Press {key} inside any input to open',
+  countTip:           isCN ? '共 {n} 条'         : '{n} records',
+  labelAccount:       isCN ? '账号'              : 'Account',
+  labelSites:         isCN ? '生效网站'           : 'Active Sites',
+  labelModeAll:       isCN ? '全部网站'           : 'All websites',
+  labelModeAllowlist: isCN ? '仅限指定网站'       : 'Selected websites only',
+  siteEmptyTip:       isCN ? '尚未添加任何网站'   : 'No sites added yet.',
+  badgeProLabel:      isCN ? '会员'              : 'Pro',
+  badgeFreeLabel:     isCN ? '免费版'             : 'Free',
+  upgradeHint:        isCN ? '免费版最多保存 <strong>10 条</strong>记录，升级会员后无限保存。'
+                           : 'Free plan saves up to <strong>10</strong> records. Upgrade for unlimited.',
+  upgradeComingSoon:  isCN ? '支付功能即将上线，敬请期待' : 'Payment coming soon, stay tuned!',
+
+  // toasts
+  filled:             isCN ? '已填充'             : 'Filled',
+  clickInputFirst:    isCN ? '请先点击目标输入框'  : 'Click a target input first',
+  saved:              isCN ? '已保存'             : 'Saved',
+  minLength:          isCN ? '内容至少 2 个字符'   : 'At least 2 characters',
+  clearConfirm:       isCN ? '确定要清空所有历史记录吗？' : 'Clear all history records?',
+  loginSuccess:       isCN ? '登录成功'           : 'Signed in',
+  registerSuccess:    isCN ? '注册成功'           : 'Account created',
+  fillEmail:          isCN ? '请填写邮箱和密码'    : 'Please enter email and password',
+  networkError:       isCN ? '请求失败，请检查网络' : 'Request failed, check your network',
+  limitFull:          isCN ? '已达免费上限，请升级会员' : 'Free limit reached, please upgrade',
+  limitRemaining:     isCN ? '免费版剩余 {n} 条额度' : 'Free plan: {n} records remaining',
+  limitReached:       isCN ? '已达免费上限（10 条），升级后无限保存' : 'Free limit reached (10 records). Upgrade for unlimited.',
+  domainInvalid:      isCN ? '域名格式有误'        : 'Invalid domain format',
+  domainAdded:        isCN ? '已添加 {domain}'    : 'Added {domain}',
+  cannotGetSite:      isCN ? '无法获取当前网站'    : 'Cannot get current site',
+  cannotParseSite:    isCN ? '无法解析当前网站'    : 'Cannot parse current site',
+};
+
+function t(key, vars = {}) {
+  let s = i18n[key] || key;
+  for (const [k, v] of Object.entries(vars)) {
+    s = s.replace(`{${k}}`, v);
+  }
+  return s;
+}
+
 (async function () {
   // ── DOM 引用 ──────────────────────────────────────────────
   const searchInput   = document.getElementById('searchInput');
@@ -72,11 +140,11 @@
     }
     const remaining = Math.max(0, FREE_LIMIT - count);
     if (remaining === 0) {
-      limitBannerText.textContent = '已达免费上限（10 条），升级后无限保存';
+      limitBannerText.textContent = t('limitReached');
       limitBanner.style.display = 'flex';
       limitBanner.classList.add('limit-banner--full');
     } else if (remaining <= 3) {
-      limitBannerText.textContent = `免费版剩余 ${remaining} 条额度`;
+      limitBannerText.textContent = t('limitRemaining', { n: remaining });
       limitBanner.style.display = 'flex';
       limitBanner.classList.remove('limit-banner--full');
     } else {
@@ -100,7 +168,7 @@
       return;
     }
     emptyTip.style.display = 'none';
-    countTip.textContent = `共 ${items.length} 条`;
+    countTip.textContent = t('countTip', { n: items.length });
 
     items.forEach(item => {
       const row = document.createElement('div');
@@ -131,9 +199,9 @@
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
           if (!tab) return;
           const res = await chrome.tabs.sendMessage(tab.id, { type: 'FILL_ACTIVE', text: item.text });
-          showToast(res && res.ok ? '已填充' : '请先点击目标输入框');
+          showToast(res && res.ok ? t('filled') : t('clickInputFirst'));
         } catch {
-          showToast('请先点击目标输入框');
+          showToast(t('clickInputFirst'));
         }
       });
 
@@ -155,7 +223,7 @@
     authMode = mode;
     tabLogin.classList.toggle('auth-tab--active', mode === 'login');
     tabRegister.classList.toggle('auth-tab--active', mode === 'register');
-    btnAuth.textContent = mode === 'login' ? '登录' : '注册';
+    btnAuth.textContent = mode === 'login' ? t('login') : t('register');
     authError.textContent = '';
   }
 
@@ -166,7 +234,7 @@
     const email = authEmail.value.trim();
     const password = authPassword.value;
     authError.textContent = '';
-    if (!email || !password) { authError.textContent = '请填写邮箱和密码'; return; }
+    if (!email || !password) { authError.textContent = t('fillEmail'); return; }
 
     btnAuth.disabled = true;
     const type = authMode === 'login' ? 'LOGIN' : 'REGISTER';
@@ -174,11 +242,11 @@
     btnAuth.disabled = false;
 
     if (!res || !res.ok) {
-      authError.textContent = (res && res.error) || '请求失败，请检查网络';
+      authError.textContent = (res && res.error) || t('networkError');
       return;
     }
     renderUserInfo(res.email, res.isPro);
-    showToast(authMode === 'login' ? '登录成功' : '注册成功');
+    showToast(authMode === 'login' ? t('loginSuccess') : t('registerSuccess'));
   });
 
   btnLogout.addEventListener('click', async () => {
@@ -197,20 +265,19 @@
     userInfo.style.display = '';
     userEmail.textContent = email;
     if (isPro) {
-      userBadge.textContent = '会员';
+      userBadge.textContent = t('badgeProLabel');
       userBadge.className = 'user-badge user-badge--pro';
       upgradeSection.style.display = 'none';
     } else {
-      userBadge.textContent = '免费版';
+      userBadge.textContent = t('badgeFreeLabel');
       userBadge.className = 'user-badge user-badge--free';
       upgradeSection.style.display = '';
     }
     updateLimitBanner(allItems.length, isPro);
   }
 
-  // 升级按钮（暂时展示提示，后续接支付）
   document.getElementById('btnUpgradeSettings').addEventListener('click', () => {
-    showToast('支付功能即将上线，敬请期待');
+    showToast(t('upgradeComingSoon'));
   });
 
   // ── 设置面板加载 ──────────────────────────────────────────
@@ -254,7 +321,7 @@
       delBtn.className = 'btn-del';
       delBtn.style.opacity = '1';
       delBtn.textContent = '×';
-      delBtn.title = '移除';
+      delBtn.title = t('remove');
       delBtn.addEventListener('click', async () => {
         await sendMsg('REMOVE_ALLOWLIST_DOMAIN', { domain });
         await loadSiteFilter();
@@ -284,7 +351,7 @@
     if (!raw) return;
     const res = await sendMsg('ADD_ALLOWLIST_DOMAIN', { domain: raw });
     if (res && res.ok === false) {
-      showToast('域名格式有误');
+      showToast(t('domainInvalid'));
       return;
     }
     siteInput.value = '';
@@ -298,14 +365,14 @@
 
   btnAddCurrent.addEventListener('click', async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.url) { showToast('无法获取当前网站'); return; }
+    if (!tab || !tab.url) { showToast(t('cannotGetSite')); return; }
     try {
       const hostname = new URL(tab.url).hostname.replace(/^www\./, '');
       await sendMsg('ADD_ALLOWLIST_DOMAIN', { domain: hostname });
       await loadSiteFilter();
-      showToast(`已添加 ${hostname}`);
+      showToast(t('domainAdded', { domain: hostname }));
     } catch {
-      showToast('无法解析当前网站');
+      showToast(t('cannotParseSite'));
     }
   });
 
@@ -334,6 +401,34 @@
   }
 
   await reload();
+
+  // ── 填充静态文案 ──────────────────────────────────────────
+  btnClear.textContent                                  = t('clear');
+  btnSaveInput.textContent                              = t('save');
+  btnSettings.title                                     = t('settings');
+  btnBack.title                                         = t('back');
+  btnUpgradeMain.textContent                            = t('upgradeBanner');
+  searchInput.placeholder                               = t('searchPlaceholder');
+  document.getElementById('emptyTip').textContent       = t('emptyTip');
+  document.getElementById('shortcutTip').innerHTML      = t('shortcutTip', { key: '<kbd>Ctrl</kbd>+<kbd>M</kbd>' });
+  document.getElementById('settingsTitle').textContent  = t('settings');
+  document.getElementById('labelAccount').textContent   = t('labelAccount');
+  document.getElementById('labelSites').textContent     = t('labelSites');
+  document.getElementById('labelModeAll').textContent   = t('labelModeAll');
+  document.getElementById('labelModeAllowlist').textContent = t('labelModeAllowlist');
+  document.getElementById('siteEmptyTip').textContent   = t('siteEmptyTip');
+  document.getElementById('upgradeHint').innerHTML      = t('upgradeHint');
+  document.getElementById('btnUpgradeSettings').textContent = t('upgradeBtn');
+  tabLogin.textContent                                  = t('login');
+  tabRegister.textContent                               = t('register');
+  btnAuth.textContent                                   = t('login');
+  btnLogout.textContent                                 = t('logout');
+  btnAddSite.textContent                                = t('add');
+  btnAddCurrent.textContent                             = t('addCurrentSite');
+  authEmail.placeholder                                 = t('emailPlaceholder');
+  authPassword.placeholder                              = t('passwordPlaceholder');
+  siteInput.placeholder                                 = t('domainPlaceholder');
+
   searchInput.focus();
 
   // ── 历史面板事件 ──────────────────────────────────────────
@@ -342,14 +437,14 @@
 
   btnSaveInput.addEventListener('click', async () => {
     const val = searchInput.value.trim();
-    if (!val || val.length < 2) { showToast('内容至少 2 个字符'); return; }
+    if (!val || val.length < 2) { showToast(t('minLength')); return; }
     const res = await sendMsg('SAVE_HISTORY', { text: val });
     if (res && res.reason === 'limit_reached') {
-      showToast('已达免费上限，请升级会员');
+      showToast(t('limitFull'));
       return;
     }
     searchInput.value = '';
-    showToast('已保存');
+    showToast(t('saved'));
     await reload();
   });
 
@@ -359,11 +454,11 @@
       if (val.length >= 2) {
         const res = await sendMsg('SAVE_HISTORY', { text: val });
         if (res && res.reason === 'limit_reached') {
-          showToast('已达免费上限，请升级会员');
+          showToast(t('limitFull'));
           return;
         }
         searchInput.value = '';
-        showToast('已保存');
+        showToast(t('saved'));
         await reload();
       }
     }
@@ -371,7 +466,7 @@
 
   btnClear.addEventListener('click', async () => {
     if (!allItems.length) return;
-    if (!confirm('确定要清空所有历史记录吗？')) return;
+    if (!confirm(t('clearConfirm'))) return;
     await sendMsg('CLEAR_ALL', {});
     allItems = [];
     renderList([]);
