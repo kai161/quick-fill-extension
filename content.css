@@ -3,6 +3,8 @@
 .qf-dropdown {
   position: fixed;
   z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
   background: #ffffff;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
@@ -13,6 +15,9 @@
   box-sizing: border-box;
   overflow: hidden;
   min-width: 200px;
+  min-height: 96px;
+  max-width: calc(100vw - 12px);
+  max-height: calc(100vh - 12px);
 }
 
 .qf-dropdown.qf-dragging {
@@ -43,7 +48,8 @@
 
 /* ── 列表容器 ── */
 .qf-list {
-  max-height: 260px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 4px 0;
   scrollbar-width: thin;
@@ -89,10 +95,32 @@
 
 .qf-item-text {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: normal;
   color: #222;
+}
+
+.qf-resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+}
+
+.qf-resize-handle::before {
+  content: '';
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #c3cad9;
+  border-bottom: 2px solid #c3cad9;
 }
 
 .qf-item-count {

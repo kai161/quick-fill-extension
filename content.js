@@ -14,12 +14,84 @@
   let activeIndex = -1;
   let currentItems = [];
   let isDragging = false;
+  let isResizing = false;
   let dragOffsetX = 0;
   let dragOffsetY = 0;
+  let resizeStartX = 0;
+  let resizeStartY = 0;
+  let resizeStartWidth = 0;
+  let resizeStartHeight = 0;
   let savedPos = null; // 用户拖拽后记住的位置
+  let savedSize = null; // 用户拉伸后记住的尺寸
+  let layoutLoaded = false;
+  let layoutLoadPromise = null;
+  const DROPDOWN_LAYOUT_KEY = 'qf_dropdown_layout';
 
   function sendMsg(type, data) {
     return new Promise(resolve => chrome.runtime.sendMessage({ type, ...data }, resolve));
+  }
+
+  function storageGet(keys) {
+    return new Promise(resolve => {
+      try {
+        chrome.storage.local.get(keys, resolve);
+      } catch {
+        resolve({});
+      }
+    });
+  }
+
+  function storageSet(data) {
+    try {
+      chrome.storage.local.set(data);
+    } catch {}
+  }
+
+  function isFiniteNumber(n) {
+    return typeof n === 'number' && Number.isFinite(n);
+  }
+
+  function clampNumber(n, min, max) {
+    return Math.max(min, Math.min(max, n));
+  }
+
+  async function loadDropdownLayout() {
+    if (layoutLoaded) return;
+    if (!layoutLoadPromise) {
+      layoutLoadPromise = storageGet(DROPDOWN_LAYOUT_KEY).then(res => {
+        const layout = res[DROPDOWN_LAYOUT_KEY];
+        if (layout && layout.pos && isFiniteNumber(layout.pos.x) && isFiniteNumber(layout.pos.y)) {
+          savedPos = { x: layout.pos.x, y: layout.pos.y };
+        }
+        if (layout && layout.size && isFiniteNumber(layout.size.width) && isFiniteNumber(layout.size.height)) {
+          savedSize = {
+            width: clampNumber(layout.size.width, 200, Math.max(200, window.innerWidth - 6)),
+            height: clampNumber(layout.size.height, 96, Math.max(96, window.innerHeight - 6)),
+          };
+        }
+        layoutLoaded = true;
+      });
+    }
+    await layoutLoadPromise;
+  }
+
+  function saveDropdownLayout() {
+    storageSet({
+      [DROPDOWN_LAYOUT_KEY]: {
+        pos: savedPos,
+        size: savedSize,
+      },
+    });
+  }
+
+  function keepDropdownInViewport() {
+    if (!dropdown) return;
+    const maxLeft = Math.max(0, window.innerWidth - dropdown.offsetWidth);
+    const maxTop = Math.max(0, window.innerHeight - dropdown.offsetHeight);
+    const left = clampNumber(parseFloat(dropdown.style.left) || 0, 0, maxLeft);
+    const top = clampNumber(parseFloat(dropdown.style.top) || 0, 0, maxTop);
+    dropdown.style.left = `${left}px`;
+    dropdown.style.top = `${top}px`;
   }
 
   // ─── 选中文字保存气泡 ─────────────────────────────────────
@@ -77,12 +149,66 @@
 
   // ─── 历史记录面板 ─────────────────────────────────────────
 
-  const SKIP_TYPES = new Set(['password', 'hidden', 'file', 'checkbox', 'radio', 'submit', 'button', 'reset', 'image', 'color', 'range']);
+  const SKIP_TYPES = new Set([
+    'password',
+    'hidden',
+    'file',
+    'checkbox',
+    'radio',
+    'submit',
+    'button',
+    'reset',
+    'image',
+    'color',
+    'range',
+    'date',
+    'datetime-local',
+    'month',
+    'time',
+    'week',
+  ]);
+
+  const DATE_PICKER_SELECTOR = [
+    '.ant-picker',
+    '.ant-calendar-picker',
+    '.el-date-editor',
+    '.ivu-date-picker',
+    '.mx-datepicker',
+    '.flatpickr-input',
+    '.layui-laydate',
+    '.date-picker',
+    '.datepicker',
+    '[class*="date-picker"]',
+    '[class*="datepicker"]',
+  ].join(',');
+  const DATE_HINT_RE = /(^|[-_\s])(date|datetime|time|calendar|month|year)([-_\s]|$)|日期|时间|日历|年月/;
+
+  function normalizeHintText(text) {
+    return String(text || '')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .toLowerCase();
+  }
+
+  function hasDatePickerHints(el) {
+    if (el.closest(DATE_PICKER_SELECTOR)) return true;
+    const hintText = [
+      el.id,
+      el.name,
+      el.className,
+      el.placeholder,
+      el.title,
+      el.getAttribute('aria-label'),
+      el.getAttribute('autocomplete'),
+      el.getAttribute('data-testid'),
+    ].map(normalizeHintText).join(' ');
+    return DATE_HINT_RE.test(hintText);
+  }
 
   function isInput(el) {
     if (el.tagName === 'TEXTAREA') return true;
     if (el.tagName === 'INPUT') {
       if (SKIP_TYPES.has((el.type || 'text').toLowerCase())) return false;
+      if (hasDatePickerHints(el)) return false;
       if (el.readOnly) return false; // 日期选择器等只读展示框
       const role = (el.getAttribute('role') || '').toLowerCase();
       if (role === 'combobox' || role === 'listbox' || role === 'spinbutton') return false;
@@ -106,9 +232,11 @@
     activeIndex = -1;
     currentItems = [];
     isDragging = false;
+    isResizing = false;
   }
 
-  function renderDropdown(items, inputEl) {
+  async function renderDropdown(items, inputEl) {
+    await loadDropdownLayout();
     closeDropdown();
     currentItems = items;
     activeIndex = -1;
@@ -124,7 +252,8 @@
       dropdown.style.top = `${rect.bottom + 4}px`;
       dropdown.style.left = `${rect.left}px`;
     }
-    dropdown.style.width = `${Math.max(rect.width, 260)}px`;
+    dropdown.style.width = `${savedSize ? savedSize.width : Math.max(rect.width, 260)}px`;
+    if (savedSize) dropdown.style.height = `${savedSize.height}px`;
 
     // 标题栏（可拖拽）
     const handle = document.createElement('div');
@@ -169,7 +298,14 @@
     }
 
     dropdown.appendChild(list);
+
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'qf-resize-handle';
+    resizeHandle.title = ct('拖拽调整大小', 'Drag to resize');
+    dropdown.appendChild(resizeHandle);
+
     document.body.appendChild(dropdown);
+    keepDropdownInViewport();
 
     // 拖拽
     handle.addEventListener('mousedown', e => {
@@ -179,6 +315,18 @@
       const r = dropdown.getBoundingClientRect();
       dragOffsetX = e.clientX - r.left;
       dragOffsetY = e.clientY - r.top;
+      dropdown.classList.add('qf-dragging');
+    });
+
+    resizeHandle.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      isResizing = true;
+      resizeStartX = e.clientX;
+      resizeStartY = e.clientY;
+      resizeStartWidth = dropdown.offsetWidth;
+      resizeStartHeight = dropdown.offsetHeight;
       dropdown.classList.add('qf-dragging');
     });
   }
@@ -192,9 +340,18 @@
 
   // 拖拽移动
   document.addEventListener('mousemove', e => {
-    if (!isDragging || !dropdown) return;
-    dropdown.style.left = `${Math.max(0, Math.min(e.clientX - dragOffsetX, window.innerWidth - dropdown.offsetWidth))}px`;
-    dropdown.style.top = `${Math.max(0, Math.min(e.clientY - dragOffsetY, window.innerHeight - dropdown.offsetHeight))}px`;
+    if (!dropdown) return;
+    if (isDragging) {
+      dropdown.style.left = `${Math.max(0, Math.min(e.clientX - dragOffsetX, window.innerWidth - dropdown.offsetWidth))}px`;
+      dropdown.style.top = `${Math.max(0, Math.min(e.clientY - dragOffsetY, window.innerHeight - dropdown.offsetHeight))}px`;
+    } else if (isResizing) {
+      const left = dropdown.getBoundingClientRect().left;
+      const top = dropdown.getBoundingClientRect().top;
+      const width = Math.max(200, Math.min(resizeStartWidth + e.clientX - resizeStartX, window.innerWidth - left - 6));
+      const height = Math.max(96, Math.min(resizeStartHeight + e.clientY - resizeStartY, window.innerHeight - top - 6));
+      dropdown.style.width = `${width}px`;
+      dropdown.style.height = `${height}px`;
+    }
   });
   document.addEventListener('mouseup', () => {
     if (isDragging) {
@@ -205,6 +362,23 @@
           x: parseFloat(dropdown.style.left),
           y: parseFloat(dropdown.style.top),
         };
+        saveDropdownLayout();
+      }
+    }
+    if (isResizing) {
+      isResizing = false;
+      if (dropdown) {
+        dropdown.classList.remove('qf-dragging');
+        savedSize = {
+          width: dropdown.offsetWidth,
+          height: dropdown.offsetHeight,
+        };
+        keepDropdownInViewport();
+        savedPos = {
+          x: parseFloat(dropdown.style.left),
+          y: parseFloat(dropdown.style.top),
+        };
+        saveDropdownLayout();
       }
     }
   });
@@ -216,7 +390,7 @@
     if (dropdown && activeInput === el) return;
     activeInput = el;
     const res = await sendMsg('GET_HISTORY', { query: '' });
-    renderDropdown(res.list || [], el);
+    await renderDropdown(res.list || [], el);
   }, true);
 
   // Ctrl+M 切换面板
@@ -227,7 +401,7 @@
       if (dropdown) { closeDropdown(); return; }
       activeInput = el;
       const res = await sendMsg('GET_HISTORY', { query: '' });
-      renderDropdown(res.list || [], el);
+      await renderDropdown(res.list || [], el);
       return;
     }
     if (!dropdown) return;

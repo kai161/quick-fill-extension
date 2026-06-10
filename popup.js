@@ -19,6 +19,12 @@ const i18n = {
   upgradeBtn:         isCN ? '立即升级会员'       : 'Upgrade to Pro',
   delete:             isCN ? '删除'              : 'Delete',
   remove:             isCN ? '移除'              : 'Remove',
+  planTitle:          isCN ? '选择订阅计划'       : 'Choose Plan',
+  planMonthly:        isCN ? '月付 $1.99/月'     : 'Monthly $1.99/mo',
+  planYearly:         isCN ? '年付 $14.99/年'    : 'Yearly $14.99/yr',
+  planYearlyBadge:    isCN ? '省38%'             : 'Save 38%',
+  cancel:             isCN ? '取消'              : 'Cancel',
+  resize:             isCN ? '拖拽调整大小'       : 'Drag to resize',
 
   // placeholders
   searchPlaceholder:  isCN ? '搜索或输入新内容…'  : 'Search or type new content…',
@@ -51,6 +57,8 @@ const i18n = {
   registerSuccess:    isCN ? '注册成功'           : 'Account created',
   fillEmail:          isCN ? '请填写邮箱和密码'    : 'Please enter email and password',
   networkError:       isCN ? '请求失败，请检查网络' : 'Request failed, check your network',
+  loginRequired:      isCN ? '请先登录后再升级'    : 'Please sign in before upgrading',
+  checkoutLoading:    isCN ? '正在打开支付页面…'   : 'Opening checkout…',
   limitFull:          isCN ? '已达免费上限，请升级会员' : 'Free limit reached, please upgrade',
   limitRemaining:     isCN ? '免费版剩余 {n} 条额度' : 'Free plan: {n} records remaining',
   limitReached:       isCN ? '已达免费上限（10 条），升级后无限保存' : 'Free limit reached (10 records). Upgrade for unlimited.',
@@ -83,6 +91,7 @@ function t(key, vars = {}) {
   const limitBanner   = document.getElementById('limitBanner');
   const limitBannerText = document.getElementById('limitBannerText');
   const btnUpgradeMain = document.getElementById('btnUpgradeMain');
+  const resizeHandle  = document.getElementById('resizeHandle');
 
   // 账号
   const authForm      = document.getElementById('authForm');
@@ -112,10 +121,79 @@ function t(key, vars = {}) {
   let authMode = 'login'; // 'login' | 'register'
 
   const FREE_LIMIT = 10;
+  const SIZE_KEY = 'qf_popup_size';
+  const POPUP_SIZE = {
+    minWidth: 320,
+    minHeight: 320,
+    maxWidth: 780,
+    maxHeight: 600,
+  };
 
   function sendMsg(type, data) {
     return new Promise(resolve => chrome.runtime.sendMessage({ type, ...data }, resolve));
   }
+
+  // ── 弹窗尺寸调整 ──────────────────────────────────────────
+
+  function clamp(n, min, max) {
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function applyPopupSize(size) {
+    const width = clamp(size.width, POPUP_SIZE.minWidth, POPUP_SIZE.maxWidth);
+    const height = clamp(size.height, POPUP_SIZE.minHeight, POPUP_SIZE.maxHeight);
+    document.body.style.setProperty('--popup-width', `${width}px`);
+    document.body.style.setProperty('--popup-height', `${height}px`);
+  }
+
+  function loadPopupSize() {
+    try {
+      const raw = localStorage.getItem(SIZE_KEY);
+      if (!raw) return;
+      const size = JSON.parse(raw);
+      if (Number.isFinite(size.width) && Number.isFinite(size.height)) {
+        applyPopupSize(size);
+      }
+    } catch {
+      localStorage.removeItem(SIZE_KEY);
+    }
+  }
+
+  function savePopupSize(size) {
+    localStorage.setItem(SIZE_KEY, JSON.stringify(size));
+  }
+
+  loadPopupSize();
+
+  resizeHandle.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = document.body.offsetWidth;
+    const startHeight = document.body.offsetHeight;
+    document.body.classList.add('is-resizing');
+
+    function onMouseMove(moveEvent) {
+      const width = clamp(startWidth + moveEvent.clientX - startX, POPUP_SIZE.minWidth, POPUP_SIZE.maxWidth);
+      const height = clamp(startHeight + moveEvent.clientY - startY, POPUP_SIZE.minHeight, POPUP_SIZE.maxHeight);
+      applyPopupSize({ width, height });
+    }
+
+    function onMouseUp() {
+      document.body.classList.remove('is-resizing');
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      savePopupSize({
+        width: document.body.offsetWidth,
+        height: document.body.offsetHeight,
+      });
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
 
   // ── 面板切换 ──────────────────────────────────────────────
 
@@ -276,9 +354,92 @@ function t(key, vars = {}) {
     updateLimitBanner(allItems.length, isPro);
   }
 
-  document.getElementById('btnUpgradeSettings').addEventListener('click', () => {
-    showToast(t('upgradeComingSoon'));
+  const btnUpgradeSettings = document.getElementById('btnUpgradeSettings');
+
+  btnUpgradeSettings.addEventListener('click', async () => {
+    const state = await sendMsg('GET_AUTH_STATE', {});
+    if (!state || !state.token) {
+      showToast(t('loginRequired'));
+      authForm.style.display = '';
+      userInfo.style.display = 'none';
+      return;
+    }
+
+    const plan = await askPlan();
+    if (!plan) return;
+
+    btnUpgradeSettings.disabled = true;
+    showToast(t('checkoutLoading'));
+    const res = await sendMsg('CHECKOUT', { plan });
+    btnUpgradeSettings.disabled = false;
+    if (!res || !res.ok) {
+      showToast(res?.error || t('networkError'));
+      return;
+    }
+    chrome.tabs.create({ url: res.url });
   });
+
+  async function askPlan() {
+    return new Promise(resolve => {
+      let isResolved = false;
+      const overlay = document.createElement('div');
+      overlay.className = 'plan-modal';
+
+      const dialog = document.createElement('div');
+      dialog.className = 'plan-dialog';
+
+      const title = document.createElement('div');
+      title.className = 'plan-title';
+      title.textContent = t('planTitle');
+
+      const monthly = document.createElement('button');
+      monthly.className = 'plan-option';
+      monthly.type = 'button';
+      monthly.textContent = t('planMonthly');
+
+      const yearly = document.createElement('button');
+      yearly.className = 'plan-option plan-option--primary';
+      yearly.type = 'button';
+      yearly.textContent = t('planYearly');
+
+      const yearlyBadge = document.createElement('span');
+      yearlyBadge.className = 'plan-badge';
+      yearlyBadge.textContent = t('planYearlyBadge');
+      yearly.appendChild(yearlyBadge);
+
+      const cancel = document.createElement('button');
+      cancel.className = 'plan-cancel';
+      cancel.type = 'button';
+      cancel.textContent = t('cancel');
+
+      function close(plan) {
+        if (isResolved) return;
+        isResolved = true;
+        document.removeEventListener('keydown', onKeydown);
+        overlay.remove();
+        resolve(plan);
+      }
+
+      function onKeydown(e) {
+        if (e.key === 'Escape') close(null);
+      }
+
+      yearly.addEventListener('click', () => close('yearly'));
+      monthly.addEventListener('click', () => close('monthly'));
+      cancel.addEventListener('click', () => close(null));
+      overlay.addEventListener('click', e => {
+        if (e.target === overlay) close(null);
+      });
+      document.addEventListener('keydown', onKeydown);
+
+      dialog.appendChild(title);
+      dialog.appendChild(yearly);
+      dialog.appendChild(monthly);
+      dialog.appendChild(cancel);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+    });
+  }
 
   // ── 设置面板加载 ──────────────────────────────────────────
 
@@ -408,6 +569,7 @@ function t(key, vars = {}) {
   btnSettings.title                                     = t('settings');
   btnBack.title                                         = t('back');
   btnUpgradeMain.textContent                            = t('upgradeBanner');
+  resizeHandle.title                                    = t('resize');
   searchInput.placeholder                               = t('searchPlaceholder');
   document.getElementById('emptyTip').textContent       = t('emptyTip');
   document.getElementById('shortcutTip').innerHTML      = t('shortcutTip', { key: '<kbd>Ctrl</kbd>+<kbd>M</kbd>' });

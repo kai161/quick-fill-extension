@@ -7,12 +7,30 @@
 }
 
 body {
-  width: 360px;
-  min-height: 100px;
+  --popup-width: 360px;
+  --popup-height: 430px;
+  width: var(--popup-width);
+  height: var(--popup-height);
+  min-width: 320px;
+  min-height: 320px;
+  max-width: 780px;
+  max-height: 600px;
+  display: flex;
+  overflow: hidden;
+  position: relative;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px;
   color: #222;
   background: #fff;
+}
+
+#panelMain,
+#panelSettings {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Header ── */
@@ -150,11 +168,15 @@ body {
 
 /* ── List ── */
 .list-wrap {
-  max-height: 300px;
   overflow-y: auto;
   padding: 4px 0;
   scrollbar-width: thin;
   scrollbar-color: #ddd transparent;
+}
+
+#listWrap {
+  flex: 1;
+  min-height: 0;
 }
 
 .list-wrap::-webkit-scrollbar {
@@ -176,7 +198,7 @@ body {
 
 .record-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   padding: 7px 14px;
   cursor: pointer;
   gap: 8px;
@@ -193,9 +215,11 @@ body {
 
 .record-text {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: normal;
   color: #333;
 }
 
@@ -261,6 +285,9 @@ kbd {
 
 /* ── Settings Panel ── */
 .settings-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 12px 14px;
 }
 
@@ -418,6 +445,106 @@ kbd {
 }
 
 .btn-upgrade-full:hover { opacity: 0.9; }
+.btn-upgrade-full:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+/* ── Plan Modal ── */
+.plan-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.plan-dialog {
+  width: min(100%, 320px);
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #edf0f7;
+  border-radius: 8px;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.18);
+}
+
+.plan-title {
+  margin-bottom: 14px;
+  color: #222;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.plan-option {
+  position: relative;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  color: #3b5bdb;
+  background: #fff;
+  border: 1px solid #748ffc;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.plan-option:hover {
+  background: #f0f4ff;
+  border-color: #3b5bdb;
+}
+
+.plan-option--primary {
+  margin-bottom: 10px;
+  color: #fff;
+  background: #3b5bdb;
+  border-color: #3b5bdb;
+}
+
+.plan-option--primary:hover {
+  background: #2f4ac0;
+  border-color: #2f4ac0;
+}
+
+.plan-badge {
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  max-width: calc(100% - 16px);
+  padding: 2px 6px;
+  overflow: hidden;
+  color: #fff;
+  background: #e67700;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-cancel {
+  width: 100%;
+  padding: 8px 0;
+  color: #868e96;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.plan-cancel:hover {
+  color: #495057;
+  background: #f8f9fa;
+}
 
 /* ── Limit Banner ── */
 .limit-banner {
@@ -525,4 +652,30 @@ kbd {
 
 .toast.show {
   opacity: 1;
+}
+
+/* ── Resize Handle ── */
+.resize-handle {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  z-index: 9000;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+}
+
+.resize-handle::before {
+  content: '';
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid #c3cad9;
+  border-bottom: 2px solid #c3cad9;
+}
+
+body.is-resizing {
+  user-select: none;
 }

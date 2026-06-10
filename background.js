@@ -134,6 +134,12 @@ async function refreshProStatus() {
   }
 }
 
+async function checkout(plan) {
+  const { token } = await getAuthState();
+  if (!token) throw new Error('Not logged in');
+  return await apiPost('/api/checkout', { plan }, token);
+}
+
 async function getMode() {
   const result = await chrome.storage.local.get('qf_mode');
   return result['qf_mode'] || 'auto';
@@ -300,6 +306,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
     case 'REFRESH_PRO':
       refreshProStatus().then(() => getAuthState()).then(state => sendResponse(state));
+      return true;
+
+    case 'CHECKOUT':
+      checkout(message.plan)
+        .then(data => sendResponse({ ok: true, url: data.url }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
   }
 });
